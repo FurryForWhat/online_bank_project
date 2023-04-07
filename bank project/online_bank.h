@@ -1,7 +1,6 @@
 //
 // Created by ADMIN on 24-Feb-23.
 //
-
 #ifndef MYFIRSTPROGRAM_ONLINE_BANK_H
 #define MYFIRSTPROGRAM_ONLINE_BANK_H
 
@@ -59,6 +58,7 @@ int emailFounded_index= -1;
 int phone_found= -1;
 int total_transfer_perDay;
 int trans_limit= 0;
+int receive_limit= 0;
 int gloabl_record_index=0;
 unsigned int global_record_sum=0;
 //global array
@@ -95,9 +95,10 @@ void space_counter();
 void integer_to_char(unsigned int value);
 unsigned int charArray_to_unsigned_fun(char charArray[]);
 void get_time();
-unsigned int get_record_AandT(int to_calc_index);
+unsigned int calculate_amounts_same_days(int to_calcu_index);
 void tran_amount_limit_pDay(unsigned int trans_limit, unsigned int amount);
-void get_limit_amount(int user_index, unsigned int amount);
+void get_limit_amount(int user_index);
+void get_limit_amount_ForReceiver(int user_index);
 void transactionLimit( unsigned int amount);
 void current_data_toTransfer(unsigned int current_amount_toTransfer);
 
@@ -173,9 +174,24 @@ void userSector(){
         }
         transfer_money( emailExist, phone_found, amount_to_transfer);
         userSector();
-    } else if(user_option== 7){
+
+    } else if( user_option == 2){
+        unsigned int Input_amount= 0;
+        printf("Enter the amount to cash out!!\n");
+        scanf("%d", &Input_amount);
+        if( Input_amount <= db[emailExist].current_amount){
+
+            db[emailExist].current_amount-= Input_amount;
+            // နှုတ်ပြီးရင် password စစ်ရမယ်
+
+        } else{
+            printf(" You don't have enough money to cash out!!\n");
+        }
+
+    }else if(user_option== 7){
         welcome();
     }
+
 }
 
 void transfer_money(int transfer, int receiver, unsigned  int amount){
@@ -183,16 +199,27 @@ void transfer_money(int transfer, int receiver, unsigned  int amount){
     printf("loading to transfer...\n");
 
     //to insert transaction amount limit per day function
+    unsigned int total_amount= calculate_amounts_same_days(transfer);
+    printf("\nName: %s: total_amount: %u",db[transfer].name, total_amount);
+    get_limit_amount(transfer);
 
-    get_limit_amount(receiver, amount);
+    total_amount+= amount;                                                      // adding index amount to total amount
+    printf("\n\n******************\ntotalAmount:%u \n", total_amount);
 
-    db[transfer].current_amount -= amount;
-    db[receiver].current_amount += amount;
-    printf("Transaction success!!!\n");
-    transaction_record(transfer, receiver,'t',amount);
-    transaction_record(transfer,receiver, 'r',amount);
 
-    printingAllData();
+
+    if(total_amount>= trans_limit){
+        printf("Exceeded Limit Amount!\n");
+        printf("You can transfer amount for: %u", total_amount-trans_limit);
+        userSector();
+    } else{
+        db[transfer].current_amount -= amount;
+        db[receiver].current_amount += amount;
+        printf("Transaction success!!!\n");
+        transaction_record(transfer, receiver,'t',amount);
+        transaction_record(transfer,receiver, 'r',amount);
+        printingAllData();
+    }
 }
 
 void transaction_record(int transfer , int receiver , char who,unsigned int amount){
@@ -816,7 +843,7 @@ void get_time(){
 
 }
 
-void get_limit_amount(int user_index, unsigned int amount){
+void get_limit_amount(int user_index){
 
     int acc_level= db[user_index].acc_level;
     char pOrb= db[user_index].pOrb[0];
@@ -843,7 +870,7 @@ void get_limit_amount(int user_index, unsigned int amount){
             }
             break;
         case 3:
-            if(p_or_b == 3){
+            if(p_or_b == 1){
                 trans_limit= 10000;
             } else{
                 trans_limit= 100000;
@@ -853,7 +880,47 @@ void get_limit_amount(int user_index, unsigned int amount){
             break;
     }
 
-    transactionLimit( amount);
+
+}
+
+void get_limit_amount_ForReceiver(int user_index){
+
+    int acc_level= db[user_index].acc_level;
+    char pOrb= db[user_index].pOrb[0];
+    int p_or_b=0;
+    if(pOrb == 'p'){
+        p_or_b= 1;
+    } else{
+        p_or_b= 2;
+    }
+
+    switch (acc_level) {
+        case 1:
+            if(p_or_b == 1){
+                receive_limit= 100000;
+            } else{
+                receive_limit= 1000000;
+            }
+            break;
+        case 2:
+            if(p_or_b == 1){
+                receive_limit= 50000;
+            } else{
+                receive_limit= 500000;
+            }
+            break;
+        case 3:
+            if(p_or_b == 1){
+                receive_limit= 10000;
+            } else{
+                receive_limit= 100000;
+            }
+            break;
+        default:
+            break;
+    }
+
+
 }
 
 void current_data_toTransfer(unsigned int current_amount_toTransfer){
@@ -861,7 +928,7 @@ void current_data_toTransfer(unsigned int current_amount_toTransfer){
 
     get_time();
 
-    printf("current info :%s : current amount to transfer: %u", Ctime[0].c_Time,current_amount_toTransfer);
+    printf("current info :%s current amount to transfer: %u", Ctime[0].c_Time,current_amount_toTransfer);
 
     get_current_day[0]= Ctime[0].c_Time[9];
     get_current_day[1]= Ctime[0].c_Time[10];
@@ -872,49 +939,6 @@ void current_data_toTransfer(unsigned int current_amount_toTransfer){
     current_day_to_transfer= current_day_toTransfer; // day
 
 }
-//to calculate all amount of same days
-unsigned int get_record_AandT(int to_calc_index){
-    int record_counter= space_arrary[to_calc_index]-15;
-    int quantity_of_amount=0;
-    int index_counter= 0;
-//    printf("record_counter: %d", record_counter);
-
-    char amount_char_array[10];
-    for (int a = record_counter-1; a >= 0; ++a) {
-        int current_record_counter= charCounting(db[to_calc_index].tr_record[a].note);
-//        printf("current record counter: %d", current_record_counter);
-
-            // aa for searching '$'
-        for (int aa = 0; aa < current_record_counter; ++aa) {
-            if(db[to_calc_index].tr_record[a].note[aa] == '$'){
-                break;
-            }
-
-            index_counter++;
-
-        }
-
-        // aaa for searching '-'
-        for (int aaa = index_counter; aaa < current_record_counter; ++aaa) {
-
-            if(db[to_calc_index].tr_record[a].note[aaa] == '-') {
-                break;
-            }
-            quantity_of_amount++;
-
-        }
-        index_counter++;
-        for (int x = 0; x <quantity_of_amount-1 ; x++) {
-            amount_char_array[x]= db[to_calc_index].tr_record[a].note[index_counter];
-            index_counter++;
-        }
-         unsigned int current_record_amount= charArray_to_unsigned_fun(amount_char_array);
-        printf("Current_record_amount : %d\n", current_record_amount);
-            }
-
-
-    }
-
 
 // to calculate all amount of same days
 unsigned int calculate_amounts_same_days(int to_calcu_index){
@@ -923,9 +947,8 @@ unsigned int calculate_amounts_same_days(int to_calcu_index){
     int record_counter =space_arrary[to_calcu_index]-15;
     int index_counter=0;
 
-
     char day_char_array[3];
-    for(int a=record_counter-1; a>=0 ; a--){
+    for(int a=record_counter-1; a>0 ; a--){
 
 
         int current_record_counter =  charCounting(db[to_calcu_index].tr_record[a].note);
@@ -981,18 +1004,16 @@ unsigned int calculate_amounts_same_days(int to_calcu_index){
         printf("Current record day: %d\n",current_record_day);
 
         if(current_record_day!=current_day_to_transfer){
-            total_amount_for_same_day = total_amount_for_same_day+current_record_amount;
             break;
+        }else{
+            index_counter=0;
         }
-//            else{
-//                total_amount_for_same_day = total_amount_for_same_day+current_record_amount;
-//            }
 
-        index_counter=0;
+
     }
-    printf(" total amount for same day! %u",total_amount_for_same_day);
+    printf("total amount for same day! %u",total_amount_for_same_day);
 
-    return total_amount_for_same_day;
+return total_amount_for_same_day;
 }
 
  void transactionLimit( unsigned int amount){

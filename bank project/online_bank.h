@@ -147,9 +147,10 @@ void userSector(){
             }
         }
 
-        scanf("%u", &amount_to_transfer);
+        printf("Are u sure to send for %s email: %s\n", db[phone_found].name, db[phone_found].email);
+
         while (amount_to_transfer<db[emailExist].current_amount){
-            printf("are u sure to send for %s email :%s:\n",db[phone_found].name,db[phone_found].email);
+            
             printf("Enter your amount to transfer:");
             scanf("%u", &amount_to_transfer);
             if(db[emailExist].current_amount-1000>amount_to_transfer){
@@ -177,15 +178,28 @@ void userSector(){
 
     } else if( user_option == 2){
         unsigned int Input_amount= 0;
-        printf("Enter the amount to cash out!!\n");
-        scanf("%d", &Input_amount);
-        if( Input_amount <= db[emailExist].current_amount){
+        char input_pass[50];
+        printf("Enter the amount to withdraw!!\n");
+        scanf("%u", &Input_amount);
 
+
+
+        if( Input_amount <= db[emailExist].current_amount){
             db[emailExist].current_amount-= Input_amount;
             // နှုတ်ပြီးရင် password စစ်ရမယ်
+            printf("Enter your password: \n");
+            scanf(" %[^\n]", &input_pass);
+            two_charArray= -1;
+            compare_two_charArray(db[emailExist].password, input_pass);
+            if(two_charArray == -1){
+                printf("Wrong credential:\n");
+            }
+
+            withdrawal_record(emailExist,Input_amount);
 
         } else{
             printf(" You don't have enough money to cash out!!\n");
+            userSector();
         }
 
     }else if(user_option== 7){
